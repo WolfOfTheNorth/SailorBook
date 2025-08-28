@@ -1,0 +1,68 @@
+name: pdreader
+description: A privacy-first reading and listening app for public-domain books.
+publish_to: 'none'
+version: 0.0.1+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State management
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+  
+  # Navigation
+  go_router: ^12.1.1
+  
+  # Audio
+  just_audio: ^0.9.36
+  audio_session: ^0.1.16
+  
+  # Storage and paths
+  path_provider: ^2.1.1
+  shared_preferences: ^2.2.2
+  
+  # HTTP and networking
+  http: ^1.1.0
+  
+  # EPUB parsing (Dart side for metadata)
+  epubx: ^4.0.0
+  
+  # UI and theming
+  google_fonts: ^6.1.0
+  flutter_screenutil: ^5.9.0
+  
+  # Rust bridge
+  flutter_rust_bridge: ^2.0.0-dev.31
+  
+  # Utilities
+  equatable: ^2.0.5
+  json_annotation: ^4.8.1
+  crypto: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  
+  # Code generation
+  riverpod_generator: ^2.3.9
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+  
+  # Integration testing
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/fonts/
+    - assets/models/

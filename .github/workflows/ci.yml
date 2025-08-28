@@ -1,0 +1,267 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  FLUTTER_VERSION: '3.16.0'
+  NODE_VERSION: '18'
+
+jobs:
+  rust-tests:
+    name: Rust Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./crates/pdreader_core
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rustfmt, clippy
+    
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Check Rust formatting
+      run: cargo fmt -- --check
+    
+    - name: Run Clippy
+      run: cargo clippy -- -D warnings
+    
+    - name: Run Rust tests
+      run: cargo test --verbose
+
+  flutter-tests:
+    name: Flutter Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/app_flutter
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+    
+    - name: Install Flutter dependencies
+      run: flutter pub get
+    
+    - name: Verify Flutter formatting
+      run: dart format --set-exit-if-changed lib/ test/
+    
+    - name: Analyze Flutter code
+      run: flutter analyze
+    
+    - name: Run Flutter tests
+      run: flutter test --coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./apps/app_flutter/coverage/lcov.info
+
+  build-flutter:
+    name: Build Flutter Apps
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: web
+          - os: macos-latest
+            target: macos
+          - os: windows-latest
+            target: windows
+    
+    defaults:
+      run:
+        working-directory: ./apps/app_flutter
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Enable platform
+      run: |
+        if [[ "${{ matrix.target }}" == "web" ]]; then
+          flutter config --enable-web
+        elif [[ "${{ matrix.target }}" == "macos" ]]; then
+          flutter config --enable-macos-desktop
+        elif [[ "${{ matrix.target }}" == "windows" ]]; then
+          flutter config --enable-windows-desktop
+        fi
+    
+    - name: Build for ${{ matrix.target }}
+      run: |
+        if [[ "${{ matrix.target }}" == "web" ]]; then
+          flutter build web --release
+        elif [[ "${{ matrix.target }}" == "macos" ]]; then
+          flutter build macos --release
+        elif [[ "${{ matrix.target }}" == "windows" ]]; then
+          flutter build windows --release
+        fi
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.target }}-build
+        path: |
+          apps/app_flutter/build/${{ matrix.target }}/
+        retention-days: 7
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [flutter-tests, rust-tests]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        cache: true
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: tests/playwright/package-lock.json
+    
+    - name: Install Flutter dependencies
+      run: |
+        cd apps/app_flutter
+        flutter pub get
+        flutter config --enable-web
+    
+    - name: Install Playwright dependencies
+      run: |
+        cd tests/playwright
+        npm ci
+        npx playwright install --with-deps
+    
+    - name: Run E2E tests
+      run: |
+        cd tests/playwright
+        npm run test
+    
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: playwright-report
+        path: tests/playwright/playwright-report/
+        retention-days: 30
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-flutter, e2e-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get version from pubspec.yaml
+      id: version
+      run: |
+        VERSION=$(grep '^version: ' apps/app_flutter/pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Check if tag exists
+      id: tag_check
+      run: |
+        if git rev-parse "refs/tags/${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Download build artifacts
+      if: steps.tag_check.outputs.exists == 'false'
+      uses: actions/download-artifact@v3
+      with:
+        path: ./artifacts
+    
+    - name: Create Release
+      if: steps.tag_check.outputs.exists == 'false'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        name: Release ${{ steps.version.outputs.version }}
+        body: |
+          ## Changes in this release
+          
+          See [CHANGELOG.md](CHANGELOG.md) for details.
+          
+          ## Downloads
+          
+          - **Web**: Available at GitHub Pages
+          - **macOS**: Download the `.app` bundle below
+          - **Windows**: Download the `.exe` installer below
+          
+          ## Installation
+          
+          See [README.md](README.md) for installation instructions.
+        files: |
+          ./artifacts/**/*
+        draft: false
+        prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

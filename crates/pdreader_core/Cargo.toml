@@ -1,0 +1,43 @@
+[package]
+name = "pdreader_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# EPUB parsing
+epub = "2.0"
+zip = "0.6"
+html2text = "0.6"
+regex = "1.10"
+
+# TTS and AI
+ort = { version = "2.0", features = ["load-dynamic"] }
+hound = "3.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Caching and storage
+blake3 = "1.5"
+lru = "0.12"
+tokio = { version = "1.35", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Flutter bridge
+flutter_rust_bridge = "2.0.0-dev.31"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+[build-dependencies]
+flutter_rust_bridge_codegen = "2.0.0-dev.31"
+
+[[bin]]
+name = "codegen"
+path = "src/bin/codegen.rs"

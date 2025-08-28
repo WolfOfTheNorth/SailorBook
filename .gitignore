@@ -1,0 +1,275 @@
+# SailorBook - Comprehensive .gitignore
+
+# ==============================================================================
+# Operating System Files
+# ==============================================================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ==============================================================================
+# Flutter & Dart
+# ==============================================================================
+
+# Flutter/Dart build outputs
+**/build/
+**/android/app/build/
+**/ios/build/
+**/web/build/
+**/macos/build/
+**/windows/build/
+**/linux/build/
+
+# Flutter generated files
+**/flutter_*.png
+**/flutter_*.icns
+**/Generated.xcconfig
+**/flutter_export_environment.sh
+
+# Dart tool files
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/doc/api/
+**/pubspec.lock
+
+# Flutter web
+**/web/main.dart.js
+**/web/main.dart.js.map
+**/web/flutter_service_worker.js
+
+# Coverage
+**/coverage/
+**/test/.test_coverage.dart
+
+# ==============================================================================
+# Rust & Cargo
+# ==============================================================================
+
+# Rust build outputs
+**/target/
+**/*.rs.bk
+**/Cargo.lock
+
+# Cargo
+**/target/
+**/Cargo.lock
+**/*.orig
+**/.cargo/
+
+# ==============================================================================
+# Node.js & JavaScript (Playwright Tests)
+# ==============================================================================
+
+# Dependencies
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/lerna-debug.log*
+
+# Playwright
+**/test-results/
+**/playwright-report/
+**/playwright/.cache/
+**/tests/screenshots/
+**/tests/videos/
+
+# Package managers
+**/package-lock.json
+**/yarn.lock
+**/.pnpm-debug.log*
+
+# ==============================================================================
+# IDEs & Editors
+# ==============================================================================
+
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Android Studio
+*.ap_
+local.properties
+.gradle/
+gradle-wrapper.jar
+.gradletasknamecache
+
+# Xcode
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.xcscmblueprint
+*.xccheckout
+
+# ==============================================================================
+# Application Specific
+# ==============================================================================
+
+# SailorBook specific
+**/books/
+**/downloads/
+**/cache/
+**/temp/
+**/logs/
+**/*.log
+
+# Audio files (large)
+**/*.mp3
+**/*.wav
+**/*.m4a
+**/*.ogg
+
+# EPUB files (can be large)
+**/*.epub
+**/*.mobi
+
+# TTS cache
+**/tts_cache/
+**/voice_cache/
+
+# User preferences
+**/user_preferences.json
+**/settings.json
+**/config.json
+
+# Database files
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# ==============================================================================
+# Security & Secrets
+# ==============================================================================
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.envrc
+
+# API keys and secrets
+**/secrets/
+**/*_secret*
+**/*_key*
+**/*.pem
+**/*.p12
+**/*.jks
+**/*.keystore
+
+# ==============================================================================
+# Development & Build Tools
+# ==============================================================================
+
+# CMake
+**/CMakeCache.txt
+**/CMakeFiles/
+**/cmake_install.cmake
+**/install_manifest.txt
+
+# Temporary files
+**/*.tmp
+**/*.temp
+**/*.swp
+**/*.swo
+**/.*~
+**/#*#
+
+# Archive files
+**/*.zip
+**/*.tar.gz
+**/*.rar
+**/*.7z
+
+# ==============================================================================
+# CI/CD
+# ==============================================================================
+
+# GitHub Actions artifacts
+**/artifacts/
+
+# Docker
+**/.dockerignore
+**/Dockerfile*
+**/docker-compose*.yml
+
+# ==============================================================================
+# Documentation Build
+# ==============================================================================
+
+# Generated documentation
+**/docs/_build/
+**/site/
+
+# ==============================================================================
+# Analytics & Monitoring
+# ==============================================================================
+
+# Firebase
+**/.firebase/
+**/firebase-debug.log
+**/firestore-debug.log
+
+# Sentry
+**/.sentryclirc
+
+# ==============================================================================
+# Backup & Recovery
+# ==============================================================================
+
+# Backup files
+**/*.backup
+**/*.bak
+**/*.orig
+**/*.old
+
+# Version control backup
+**/*.patch
+**/*.diff
