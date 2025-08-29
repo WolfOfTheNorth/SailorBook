@@ -31,8 +31,138 @@
 
   <title>pdreader</title>
   <link rel="manifest" href="manifest.json">
+  
+  <style>
+    /* Critical Flutter Web E2E Testing Fixes */
+    flt-glass-pane {
+      visibility: visible !important;
+      display: block !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
+      position: absolute !important;
+      z-index: 999999 !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    
+    /* Ensure Flutter view is visible */
+    flutter-view {
+      visibility: visible !important;
+      display: block !important;
+      pointer-events: auto !important;
+      position: relative !important;
+    }
+    
+    /* Flutter semantics visibility */
+    flt-semantics, flt-semantics-container {
+      visibility: visible !important;
+      display: block !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
+    }
+    
+    /* Canvas elements must be interactive */
+    canvas {
+      pointer-events: auto !important;
+    }
+    
+    /* Ensure Flutter root container is properly configured */
+    #flutter-app-container,
+    [data-testid="flutter-app"],
+    [key="flutter-app"] {
+      visibility: visible !important;
+      display: block !important;
+      opacity: 1 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      position: relative !important;
+    }
+    
+    /* Force override any hidden states during loading */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #fafafa;
+    }
+    
+    /* Loading state should not block interactions */
+    .loading {
+      pointer-events: none !important;
+    }
+  </style>
 </head>
 <body>
+  <script>
+    // Critical fix for Flutter Web E2E testing
+    window.addEventListener('DOMContentLoaded', function() {
+      // Force visibility of Flutter elements after they load
+      function makeFlutterVisible() {
+        const glassPane = document.querySelector('flt-glass-pane');
+        const flutterView = document.querySelector('flutter-view');
+        
+        if (glassPane) {
+          glassPane.style.visibility = 'visible';
+          glassPane.style.pointerEvents = 'auto';
+          glassPane.style.opacity = '1';
+          glassPane.style.display = 'block';
+          console.log('✅ flt-glass-pane made visible');
+        }
+        
+        if (flutterView) {
+          flutterView.style.visibility = 'visible';
+          flutterView.style.pointerEvents = 'auto';
+          console.log('✅ flutter-view made visible');
+        }
+        
+        // Make all canvas elements interactive
+        const canvases = document.querySelectorAll('canvas');
+        canvases.forEach(canvas => {
+          canvas.style.pointerEvents = 'auto';
+        });
+        
+        // Ensure Flutter semantics are visible
+        const semantics = document.querySelectorAll('flt-semantics, flt-semantics-container');
+        semantics.forEach(semantic => {
+          semantic.style.visibility = 'visible';
+          semantic.style.pointerEvents = 'auto';
+          semantic.style.opacity = '1';
+        });
+      }
+      
+      // Run immediately and also after a delay to catch dynamic elements
+      makeFlutterVisible();
+      setTimeout(makeFlutterVisible, 1000);
+      setTimeout(makeFlutterVisible, 3000);
+    });
+    
+    // Monitor for Flutter initialization and fix visibility issues
+    window.addEventListener('load', function() {
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes) {
+            mutation.addedNodes.forEach(function(node) {
+              if (node.tagName && (
+                node.tagName.toLowerCase() === 'flt-glass-pane' || 
+                node.tagName.toLowerCase() === 'flutter-view' ||
+                node.tagName.toLowerCase().startsWith('flt-'))) {
+                setTimeout(() => {
+                  node.style.visibility = 'visible';
+                  node.style.pointerEvents = 'auto';
+                  node.style.opacity = '1';
+                  console.log('✅ Dynamic Flutter element made visible:', node.tagName);
+                }, 100);
+              }
+            });
+          }
+        });
+      });
+      
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+  </script>
+  
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

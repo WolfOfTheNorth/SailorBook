@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/library_controller.dart';
 import '../../widgets/book_card.dart';
 import '../../widgets/search_bar.dart';
+import '../../utils/test_helpers.dart';
 
 class LibraryView extends ConsumerStatefulWidget {
   const LibraryView({super.key});
@@ -48,9 +49,15 @@ class _LibraryViewState extends ConsumerState<LibraryView>
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'Library'),
-            Tab(text: 'Search'),
+          tabs: [
+            const Tab(
+              key: Key('library-tab'),
+              text: 'Library',
+            ).withTestId('library-tab', label: 'Library Tab'),
+            const Tab(
+              key: Key('search-tab'), 
+              text: 'Search',
+            ).withTestId('search-tab', label: 'Search Tab'),
           ],
         ),
       ),
@@ -61,12 +68,13 @@ class _LibraryViewState extends ConsumerState<LibraryView>
           _buildSearchTab(libraryState, libraryController),
         ],
       ),
-    );
+    ).asTestContainer('library-view', label: 'Library View');
   }
 
   Widget _buildLibraryTab(LibraryState state, LibraryController controller) {
     if (state.downloadedBooks.isEmpty) {
       return Center(
+        key: const Key('empty-library'),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -88,12 +96,13 @@ class _LibraryViewState extends ConsumerState<LibraryView>
             ),
             SizedBox(height: 24.h),
             ElevatedButton(
+              key: const Key('browse-books-btn'),
               onPressed: () => _tabController.animateTo(1),
               child: const Text('Browse Books'),
-            ),
+            ).asTestButton('browse-books-btn', label: 'Browse Books Button'),
           ],
         ),
-      );
+      ).withTestId('empty-library', label: 'Empty Library State');
     }
 
     return RefreshIndicator(
@@ -104,12 +113,13 @@ class _LibraryViewState extends ConsumerState<LibraryView>
         itemBuilder: (context, index) {
           final book = state.downloadedBooks[index];
           return BookCard(
+            key: Key('library-book-${book.id}'),
             book: book,
             isDownloaded: true,
             onTap: () => context.push('/book/${book.id}'),
             onPlay: () => context.push('/player/${book.id}'),
             onDelete: () => _showDeleteDialog(book.id, controller),
-          );
+          ).withTestId('library-book-card', label: 'Library Book: ${book.title}');
         },
       ),
     );
@@ -117,17 +127,20 @@ class _LibraryViewState extends ConsumerState<LibraryView>
 
   Widget _buildSearchTab(LibraryState state, LibraryController controller) {
     return Column(
+      key: const Key('search-view'),
       children: [
         Padding(
           padding: EdgeInsets.all(16.w),
           child: CustomSearchBar(
+            key: const Key('search-input'),
             controller: _searchController,
             onSearch: controller.searchBooks,
             isLoading: state.isSearching,
-          ),
+          ).withTestId('search-input', label: 'Search Input'),
         ),
         if (state.error != null) ...[
           Container(
+            key: const Key('search-error'),
             margin: EdgeInsets.symmetric(horizontal: 16.w),
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
@@ -150,12 +163,13 @@ class _LibraryViewState extends ConsumerState<LibraryView>
                   ),
                 ),
                 IconButton(
+                  key: const Key('error-close-btn'),
                   icon: const Icon(Icons.close),
                   onPressed: controller.clearError,
-                ),
+                ).asTestButton('error-close-btn', label: 'Close Error Message'),
               ],
             ),
-          ),
+          ).withTestId('search-error', label: 'Search Error Message'),
           SizedBox(height: 16.h),
         ],
         Expanded(
@@ -193,11 +207,15 @@ class _LibraryViewState extends ConsumerState<LibraryView>
     }
 
     if (state.isSearching) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        key: Key('search-loading'),
+        child: CircularProgressIndicator(),
+      ).withTestId('search-loading', label: 'Search Loading Indicator');
     }
 
     if (state.searchResults.isEmpty) {
       return Center(
+        key: const Key('no-search-results'),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -218,10 +236,11 @@ class _LibraryViewState extends ConsumerState<LibraryView>
             ),
           ],
         ),
-      );
+      ).withTestId('no-search-results', label: 'No Search Results State');
     }
 
     return ListView.builder(
+      key: const Key('search-results-list'),
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       itemCount: state.searchResults.length,
       itemBuilder: (context, index) {
@@ -230,14 +249,15 @@ class _LibraryViewState extends ConsumerState<LibraryView>
             .any((downloadedBook) => downloadedBook.id == book.id);
 
         return BookCard(
+          key: Key('search-result-${book.id}'),
           book: book,
           isDownloaded: isDownloaded,
           onTap: () => context.push('/book/${book.id}'),
           onDownload: state.isLoading ? null : () => controller.downloadBook(book),
           isDownloading: state.isLoading,
-        );
+        ).withTestId('search-book-card', label: 'Search Result Book: ${book.title}');
       },
-    );
+    ).withTestId('search-results', label: 'Search Results List');
   }
 
   void _showDeleteDialog(String bookId, LibraryController controller) {

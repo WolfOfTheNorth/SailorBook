@@ -11,7 +11,7 @@ async function globalSetup(config: FullConfig) {
   try {
     // Wait for Flutter web app to be ready
     console.log('📱 Waiting for Flutter web app...');
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:8080');
     
     // Wait for Flutter to finish loading (look for Flutter elements)
     await page.waitForSelector('flt-glass-pane', { 

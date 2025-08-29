@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../models/book.dart';
+import '../utils/test_helpers.dart';
 
 class BookCard extends StatelessWidget {
   final Book book;
@@ -52,11 +53,12 @@ class BookCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).withTestId('book-card-${book.id}', label: 'Book: ${book.title}');
   }
 
   Widget _buildBookCover(BuildContext context) {
     return Container(
+      key: Key('book-cover-${book.id}'),
       width: 60.w,
       height: 90.h,
       decoration: BoxDecoration(
@@ -80,7 +82,7 @@ class BookCard extends StatelessWidget {
               ),
             )
           : _buildPlaceholderCover(context),
-    );
+    ).withTestId('book-cover-${book.id}', label: 'Book Cover');
   }
 
   Widget _buildPlaceholderCover(BuildContext context) {
@@ -97,23 +99,25 @@ class BookCard extends StatelessWidget {
       children: [
         Text(
           book.title,
+          key: Key('book-title-${book.id}'),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-        ),
+        ).withTestId('book-title-${book.id}', label: 'Book Title: ${book.title}'),
         
         SizedBox(height: 4.h),
         
         Text(
           book.author,
+          key: Key('book-author-${book.id}'),
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.secondary,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-        ),
+        ).withTestId('book-author-${book.id}', label: 'Book Author: ${book.author}'),
         
         SizedBox(height: 8.h),
         
@@ -157,10 +161,11 @@ class BookCard extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context) {
     if (isDownloading) {
       return SizedBox(
+        key: Key('download-loading-${book.id}'),
         width: 24.w,
         height: 24.h,
         child: const CircularProgressIndicator(strokeWidth: 2),
-      );
+      ).withTestId('download-loading-${book.id}', label: 'Download Progress');
     }
 
     if (isDownloaded) {
@@ -169,15 +174,17 @@ class BookCard extends StatelessWidget {
         children: [
           if (onPlay != null)
             IconButton(
+              key: Key('listen-btn-${book.id}'),
               onPressed: onPlay,
               icon: Icon(
                 Icons.play_arrow,
                 color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: 'Play',
-            ),
+            ).asTestButton('listen-btn-${book.id}', label: 'Listen to ${book.title}'),
           if (onDelete != null)
             IconButton(
+              key: Key('delete-btn-${book.id}'),
               onPressed: onDelete,
               icon: Icon(
                 Icons.delete_outline,
@@ -185,18 +192,19 @@ class BookCard extends StatelessWidget {
                 size: 20.sp,
               ),
               tooltip: 'Delete',
-            ),
+            ).asTestButton('delete-btn-${book.id}', label: 'Delete ${book.title}'),
         ],
       );
     }
 
     return IconButton(
+      key: Key('download-btn-${book.id}'),
       onPressed: onDownload,
       icon: Icon(
         Icons.download,
         color: Theme.of(context).colorScheme.primary,
       ),
       tooltip: 'Download',
-    );
+    ).asTestButton('download-btn-${book.id}', label: 'Download ${book.title}');
   }
 }
