@@ -38,7 +38,7 @@ test.describe('App Functionality Tests', () => {
     });
 
     // Navigate to the app
-    await page.goto('http://localhost:8080');
+    await page.goto('/');
     await page.waitForSelector('flt-glass-pane', { timeout: 30000 });
     await page.waitForTimeout(3000); // Allow Flutter to fully initialize
   });

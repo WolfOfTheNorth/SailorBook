@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/library_controller.dart';
 import '../../controllers/player_controller.dart';
 import '../../models/book.dart';
+import '../../utils/test_helpers.dart';
 import '../../generated/native.dart' as native;
 
 class BookDetailsView extends ConsumerStatefulWidget {
@@ -23,6 +24,8 @@ class BookDetailsView extends ConsumerStatefulWidget {
 class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
   BookManifest? _manifest;
   bool _isLoadingManifest = false;
+  bool _isDownloading = false;
+  String? _downloadError;
 
   @override
   void initState() {
@@ -84,9 +87,9 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
         ),
       ),
       body: book == null
-          ? const Center(child: Text('Book not found'))
+          ? const Center(child: Text('Book not found')).withTestId('book-not-found', label: 'Book Not Found')
           : _isLoadingManifest
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator()).withTestId('manifest-loading', label: 'Loading Book Details')
               : _buildBookDetails(book),
     );
   }
@@ -108,6 +111,10 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
         children: [
           _buildBookHeader(book),
           SizedBox(height: 24.h),
+          if (_downloadError != null) ...[
+            _isSuccessMessage(_downloadError!) ? _buildSuccessCard() : _buildErrorCard(),
+            SizedBox(height: 16.h),
+          ],
           _buildActionButtons(book),
           if (_manifest != null) ...[
             SizedBox(height: 32.h),
@@ -247,15 +254,144 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
     );
   }
 
+  bool _isSuccessMessage(String message) {
+    return message.contains('Download Started Successfully') || 
+           message.contains('Your EPUB download has been initiated') ||
+           message.contains('✅');
+  }
+
+  Widget _buildSuccessCard() {
+    return Card(
+      color: Theme.of(context).colorScheme.primaryContainer,
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24.sp,
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    'Download Instructions',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() => _downloadError = null),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            SelectableText(
+              _downloadError!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ).withTestId('download-success-text', label: 'Download Success Message'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard() {
+    return Card(
+      color: Theme.of(context).colorScheme.errorContainer,
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error,
+                  size: 24.sp,
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    'Download Error',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() => _downloadError = null),
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            SelectableText(
+              _downloadError!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+            ).withTestId('download-error-text', label: 'Download Error Message'),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButtons(Book book) {
+    final libraryState = ref.watch(libraryControllerProvider);
+    final isDownloadingThis = libraryState.downloadProgress.containsKey(book.id);
+    final downloadProgress = libraryState.downloadProgress[book.id] ?? 0.0;
+
     if (!book.isDownloaded) {
+      if (_isDownloading || isDownloadingThis) {
+        return Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: null,
+                icon: SizedBox(
+                  width: 16.w,
+                  height: 16.h,
+                  child: const CircularProgressIndicator(strokeWidth: 2),
+                ),
+                label: Text('Downloading... ${(downloadProgress * 100).toInt()}%'),
+              ),
+            ),
+            if (downloadProgress > 0) ...[
+              SizedBox(height: 8.h),
+              LinearProgressIndicator(
+                value: downloadProgress,
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ],
+        );
+      }
+
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
           onPressed: () => _downloadBook(book),
           icon: const Icon(Icons.download),
           label: const Text('Download Book'),
-        ),
+        ).asTestButton('download-book-btn', label: 'Download ${book.title}'),
       );
     }
 
@@ -330,8 +466,80 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
     return _manifest!.paragraphs.fold(0, (sum, p) => sum + p.wordCount);
   }
 
-  void _downloadBook(Book book) {
-    ref.read(libraryControllerProvider.notifier).downloadBook(book);
+  Future<void> _downloadBook(Book book) async {
+    setState(() {
+      _isDownloading = true;
+      _downloadError = null;
+    });
+
+    try {
+      await ref.read(libraryControllerProvider.notifier).downloadBook(book);
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Downloaded "${book.title}" successfully!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'View Library',
+              textColor: Colors.white,
+              onPressed: () => context.go('/'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _downloadError = _formatError(e.toString());
+      });
+      
+      // Also show a snackbar for immediate feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Download failed'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _downloadBook(book),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+      }
+    }
+  }
+
+  String _formatError(String error) {
+    // Check if this is actually a success message (browser download guidance)
+    if (error.contains('Download Started Successfully') || 
+        error.contains('Your EPUB download has been initiated')) {
+      return error.replaceAll('Exception: ', '').replaceAll('Exception:', '');
+    }
+    
+    if (error.contains('Failed to fetch')) {
+      return 'Network error: Unable to download the book. This might be due to:\n'
+             '• Internet connection issues\n'
+             '• Server temporarily unavailable\n'
+             '• EPUB file not accessible\n\n'
+             'Please try again later or check your internet connection.';
+    } else if (error.contains('CORS')) {
+      return 'Browser security restrictions prevent direct download. '
+             'Try using the desktop app for full download functionality.';
+    } else if (error.contains('404') || error.contains('Not Found')) {
+      return 'Book file not found on server. The EPUB may no longer be available.';
+    } else {
+      return error.replaceAll('Exception: ', '').replaceAll('Exception:', '');
+    }
   }
 
   void _startListening() {

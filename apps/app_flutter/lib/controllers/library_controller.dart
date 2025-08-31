@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/book.dart';
 import '../services/book_service.dart';
+import '../services/web_storage_service.dart';
 import '../generated/native.dart' as native;
 
 final bookServiceProvider = Provider<BookService>((ref) => BookService());
@@ -16,6 +18,7 @@ class LibraryState {
   final bool isLoading;
   final String? error;
   final String searchQuery;
+  final Map<String, double> downloadProgress; // bookId -> progress (0.0 to 1.0)
 
   const LibraryState({
     this.searchResults = const [],
@@ -24,6 +27,7 @@ class LibraryState {
     this.isLoading = false,
     this.error,
     this.searchQuery = '',
+    this.downloadProgress = const {},
   });
 
   LibraryState copyWith({
@@ -33,6 +37,7 @@ class LibraryState {
     bool? isLoading,
     String? error,
     String? searchQuery,
+    Map<String, double>? downloadProgress,
   }) {
     return LibraryState(
       searchResults: searchResults ?? this.searchResults,
@@ -41,6 +46,7 @@ class LibraryState {
       isLoading: isLoading ?? this.isLoading,
       error: error,
       searchQuery: searchQuery ?? this.searchQuery,
+      downloadProgress: downloadProgress ?? this.downloadProgress,
     );
   }
 }
@@ -79,28 +85,85 @@ class LibraryController extends StateNotifier<LibraryState> {
   }
 
   Future<void> downloadBook(Book book) async {
-    state = state.copyWith(isLoading: true, error: null);
+    debugPrint('🚀 Starting download: ${book.title} (ID: ${book.id})');
+    
+    // Initialize download progress
+    final updatedProgress = Map<String, double>.from(state.downloadProgress);
+    updatedProgress[book.id] = 0.0;
+    
+    state = state.copyWith(
+      downloadProgress: updatedProgress,
+      error: null,
+    );
+    
+    debugPrint('📊 Download progress initialized for ${book.id}');
 
     try {
-      // Download the EPUB file
-      final localPath = await _bookService.downloadBook(book);
-      
-      // Generate manifest using Rust
-      final manifest = await native.buildManifest(localPath);
-      
-      // Save manifest
-      final manifestPath = '${localPath.replaceAll('/book.epub', '')}/manifest.json';
-      await native.saveManifest(manifestPath, manifest);
-      
-      // Update downloaded books list
-      await loadDownloadedBooks();
-      
-      state = state.copyWith(isLoading: false);
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
+      // Download the EPUB file with progress tracking
+      final localPath = await _bookService.downloadBook(
+        book,
+        onProgress: (progress) {
+          // Update progress in real-time
+          final currentProgress = Map<String, double>.from(state.downloadProgress);
+          currentProgress[book.id] = progress;
+          state = state.copyWith(downloadProgress: currentProgress);
+        },
       );
+      
+      // Generate manifest - platform specific
+      if (kIsWeb) {
+        // For web, manually add the book to our downloaded list
+        final updatedBook = book.copyWith(
+          isDownloaded: true,
+          localPath: localPath,
+        );
+        
+        // Add to current state immediately
+        final currentDownloaded = List<Book>.from(state.downloadedBooks);
+        currentDownloaded.add(updatedBook);
+        
+        state = state.copyWith(downloadedBooks: currentDownloaded);
+        debugPrint('📋 Web download complete: ${book.title} - Added to library');
+      } else {
+        // For mobile/desktop, use Rust FFI (mock for now)
+        try {
+          final manifest = await native.buildManifest(localPath);
+          final manifestPath = '${localPath.replaceAll('/book.epub', '')}/manifest.json';
+          await native.saveManifest(manifestPath, manifest);
+        } catch (e) {
+          debugPrint('⚠️ Manifest generation failed (expected in development): $e');
+          // Don't fail the download just because manifest generation failed
+        }
+      }
+      
+      // Update downloaded books list - platform specific
+      if (!kIsWeb) {
+        // Only reload from file system on mobile/desktop
+        await loadDownloadedBooks();
+      }
+      
+      // Remove from download progress (download complete)
+      final finalProgress = Map<String, double>.from(state.downloadProgress);
+      finalProgress.remove(book.id);
+      
+      state = state.copyWith(downloadProgress: finalProgress);
+      
+      debugPrint('✅ Download completed successfully: ${book.title}');
+      debugPrint('📚 Total books in library: ${state.downloadedBooks.length}');
+    } catch (e) {
+      // Remove failed download from progress tracking
+      final finalProgress = Map<String, double>.from(state.downloadProgress);
+      finalProgress.remove(book.id);
+      
+      state = state.copyWith(
+        downloadProgress: finalProgress,
+        // Don't set global error here - let the UI handle it locally
+      );
+      
+      debugPrint('❌ Download failed: ${book.title} - Error: $e');
+      
+      // Re-throw so the BookDetailsView can handle it locally
+      rethrow;
     }
   }
 

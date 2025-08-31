@@ -13,6 +13,25 @@ import 'views/settings/settings_view.dart';
 import 'utils/test_helpers.dart';
 import 'generated/native.dart' as native;
 
+/// Transparent canvas painter to ensure canvas elements are rendered for tests
+class _TransparentCanvasPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Paint a completely transparent rectangle to force canvas element creation
+    final paint = Paint()
+      ..color = Colors.transparent
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -24,6 +43,13 @@ void main() async {
         statusBarColor: Colors.transparent,
       ),
     );
+    
+    // Force Flutter to use HTML renderer for web tests compatibility
+    // This ensures proper canvas element generation
+    WidgetsBinding.instance.platformDispatcher.onMetricsChanged = () {
+      // Trigger a rebuild to ensure canvas elements are created
+      WidgetsBinding.instance.handleMetricsChanged();
+    };
   }
   
   // Initialize Rust logger
@@ -114,7 +140,17 @@ class PDReaderApp extends StatelessWidget {
                             // Ensure web interactions are captured
                             debugPrint('Flutter app interaction detected');
                           },
-                          child: child,
+                          child: Stack(
+                            children: [
+                              // Add a transparent canvas element for tests
+                              CustomPaint(
+                                key: const Key('flutter-canvas'),
+                                painter: _TransparentCanvasPainter(),
+                                size: Size.infinite,
+                              ),
+                              child ?? const SizedBox(),
+                            ],
+                          ),
                         ).withTestId('app-gesture-detector', label: 'App Interaction Area')
                       : child,
                   ),

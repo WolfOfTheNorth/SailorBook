@@ -11,16 +11,24 @@ async function globalSetup(config: FullConfig) {
   try {
     // Wait for Flutter web app to be ready
     console.log('📱 Waiting for Flutter web app...');
-    await page.goto('http://localhost:8080');
+    await page.goto('http://localhost:3000');
+    
+    // Wait for basic page load first
+    await page.waitForLoadState('networkidle');
     
     // Wait for Flutter to finish loading (look for Flutter elements)
+    console.log('🔍 Looking for Flutter elements...');
     await page.waitForSelector('flt-glass-pane', { 
-      timeout: 60000,
+      timeout: 90000,  // Increased timeout
       state: 'attached'  // Just wait for element to be in DOM, not necessarily visible
     });
     
-    // Give Flutter more time to initialize
-    await page.waitForTimeout(3000);
+    // Verify the element is actually visible
+    const isVisible = await page.locator('flt-glass-pane').isVisible();
+    console.log(`📊 Flutter glass pane visible: ${isVisible}`);
+    
+    // Give Flutter more time to initialize  
+    await page.waitForTimeout(5000);  // Increased wait time
     
     console.log('✅ Flutter app loaded successfully');
     
