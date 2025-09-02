@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@executeautomation/playwright-mcp-server"],
+      "env": {
+        "PLAYWRIGHT_HEADLESS": "false",
+        "PLAYWRIGHT_BASE_URL": "http://localhost:3000",
+        "PLAYWRIGHT_TIMEOUT": "30000",
+        "PLAYWRIGHT_SCREENSHOT_MODE": "only-on-failure"
+      }
+    }
+  },
+  "testing_configuration": {
+    "natural_language_processing": {
+      "enabled": true,
+      "confidence_threshold": 0.9,
+      "fallback_to_manual": true
+    },
+    "autonomous_exploration": {
+      "enabled": true,
+      "default_duration_minutes": 15,
+      "interaction_depth": 3,
+      "risk_tolerance": "medium"
+    },
+    "performance_monitoring": {
+      "enabled": true,
+      "baseline_file": "./performance-baseline.json",
+      "alert_thresholds": {
+        "page_load": 10000,
+        "search_response": 3000,
+        "ui_interaction": 300
+      }
+    }
+  },
+  "agent_coordination": {
+    "mcp_access_control": {
+      "primary_agent": "testing_agent",
+      "secondary_agents": ["lead_agent", "mcp_agent"],
+      "coordination_required": true
+    },
+    "workflow_integration": {
+      "test_generation": "automatic",
+      "bug_discovery": "weekly",
+      "performance_tracking": "continuous"
+    }
+  }
+}

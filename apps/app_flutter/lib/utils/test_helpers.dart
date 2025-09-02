@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'dart:html' as html show document;
+import 'dart:js' as js;
 
 /// Utility class for adding test identifiers to Flutter widgets for E2E testing
 class TestHelpers {
@@ -23,8 +25,22 @@ class TestHelpers {
     bool button = false,
     bool textField = false,
   }) {
-    // Only add semantics for web builds or debug mode
-    if (kIsWeb || kDebugMode) {
+    // For web builds, create both Semantics and DOM attributes
+    if (kIsWeb) {
+      return _WebTestIdWrapper(
+        testId: testId,
+        label: label,
+        child: Semantics(
+          identifier: testId,
+          label: label ?? testId.replaceAll('-', ' ').toUpperCase(),
+          button: button,
+          textField: textField,
+          enabled: true,
+          child: child,
+        ),
+      );
+    } else if (kDebugMode) {
+      // For mobile debug, use standard Semantics
       return Semantics(
         identifier: testId,
         label: label ?? testId.replaceAll('-', ' ').toUpperCase(),
@@ -75,6 +91,69 @@ class TestHelpers {
       child,
       label: label,
     );
+  }
+}
+
+/// Web-specific widget that injects data-testid attributes into DOM
+class _WebTestIdWrapper extends StatefulWidget {
+  final String testId;
+  final String? label;
+  final Widget child;
+  
+  const _WebTestIdWrapper({
+    required this.testId,
+    this.label,
+    required this.child,
+  });
+  
+  @override
+  State<_WebTestIdWrapper> createState() => _WebTestIdWrapperState();
+}
+
+class _WebTestIdWrapperState extends State<_WebTestIdWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      // Schedule DOM injection after widget is rendered
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _injectTestIdIntoDOM();
+      });
+    }
+  }
+  
+  void _injectTestIdIntoDOM() {
+    try {
+      // Find Flutter's glass pane and inject test attributes
+      js.context.callMethod('eval', [
+        '''
+        (function() {
+          // Create a mapping for test IDs if it doesn't exist
+          if (!window.flutterTestIds) {
+            window.flutterTestIds = {};
+          }
+          window.flutterTestIds["${widget.testId}"] = {
+            label: "${widget.label ?? widget.testId}",
+            timestamp: Date.now()
+          };
+          
+          // Add data-testid attribute to glass pane for this test ID
+          const glassPane = document.querySelector('flt-glass-pane');
+          if (glassPane) {
+            glassPane.setAttribute('data-testid-${widget.testId}', 'true');
+          }
+        })();
+        '''
+      ]);
+    } catch (e) {
+      // Silently fail - testing functionality shouldn't break app
+      debugPrint('Test ID injection failed: $e');
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 
