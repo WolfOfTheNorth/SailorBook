@@ -54,12 +54,35 @@ This document describes the implementation of the features in the SailorBook pro
 
 *   **Entry Point (FFI):** `build_manifest(String epub_path)` in `crates/pdreader_core/src/epub/mod.rs`.
 *   **Parsing:** The `parse_epub` function in `crates/pdreader_core/src/epub/parser.rs` uses the `epub` crate to parse the EPUB file.
-*   **Content Extraction:** The `normalize_content` function in `crates/pdreader_core/src/epub/parser.rs` uses the `scraper` crate to extract paragraphs from the HTML content of the EPUB.
+*   **Content Extraction:** The `normalize_content` function in `crates/pdreader_core/src/epub/normalizer.rs` converts HTML → text with `html2text`, then segments into paragraphs using regex/heuristics and boilerplate filters.
 *   **Manifest Creation:** The `create_manifest` function in `crates/pdreader_core/src/epub/mod.rs` creates a `Manifest` object containing the book's metadata, chapters, and paragraphs.
 
 **Status:** Partially implemented.
 *   The EPUB parsing and manifest generation are functional.
-*   The content normalization is a **mock implementation** and needs to be improved to handle various EPUB formats and to strip headers/footers as described in the PRD.
+*   Normalization is basic; improve to honor ToC/spine hierarchy and robustly remove boilerplate.
+
+## 8. Reader View (ToC + Pagination + IA Cleanup)
+
+**Description:** Text reader with chapter selection, simple pagination, and IA disclaimer filtering.
+
+**Implementation Details:**
+
+*   **UI:** `apps/app_flutter/lib/views/reader/reader_view.dart`
+*   **Parsing (current):** `epubx` in Dart for chapters/HTML; fallback ToC built from content files with first heading as title.
+*   **Cleanup:** IA boilerplate removed at HTML stage; line breaks preserved during tag stripping.
+*   **Pagination:** Naive word‑safe chunking by character count with page controls in AppBar.
+
+**Known Issues:**
+
+*   Fallback “sections” may be short (feel like pages) if EPUB lacks ToC; order depends on content iteration.
+*   Pagination is not layout‑aware; feels like continuation rather than book‑like pages.
+*   No HTML styling beyond basic text; images/footnotes are not rendered.
+
+**Next Steps:**
+
+*   Prefer spine/NAV for ToC; group by top‑level headings for better fallback.
+*   Switch to scroll reading or adopt `epub_view` for robust ToC/progress and `flutter_html` for rendering.
+*   Bridge Rust `build_manifest()` via FRB to drive chapter/paragraph IDs and progress persistence.
 
 ## 5. Text-to-Speech (TTS)
 

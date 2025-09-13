@@ -42,13 +42,22 @@ This document outlines the core features that need to be implemented for SailorB
 - **Critical Fix**: Web storage compatibility resolved (path_provider issue fixed)
 - **Effort**: 8-10 hours → 5 hours total implementation
 
-#### 5. EPUB Parsing & Text Extraction
-- **Status**: ⚠️ Partially Implemented (Rust side)
-- **Description**: Parse EPUB files, extract chapters and paragraphs
-- **Files**: `crates/pdreader_core/src/epub/`
-- **Dependencies**: Flutter FFI bridge completion
-- **Tests**: Text parsing and chapter navigation
-- **Effort**: 6-8 hours
+#### 5. EPUB Parsing & Reader UX
+- **Status**: In Progress (MVP shipped in Flutter; robust Rust pipeline pending)
+- **Current**: Reader shows text with ToC dropdown (fallback), basic pagination, and Internet Archive disclaimer filtering.
+- **Files**: Flutter `apps/app_flutter/lib/views/reader/reader_view.dart`; Rust core `crates/pdreader_core/src/epub/`
+- **Pending**: Bridge Rust parser via FRB to get true ToC (from `nav.xhtml`/spine), paragraphs, and normalized structure; upgrade rendering to HTML widgets.
+- **Known Issues**:
+  - Fallback sections may behave like short “pages” instead of real chapters on some IA EPUBs.
+  - Pagination is character-count based, not layout-aware; feels like continuous text splits.
+  - HTML formatting (italics, footnotes, images) is not rendered; text-only.
+  - ToC order relies on content file iteration when no chapters are exposed by `epubx`.
+- **Next Steps**:
+  - Prefer spine order and NAV ToC where available; group by top-level headings for fallback.
+  - Switch to rendering HTML with `flutter_html` or adopt `epub_view` package for full reader UX.
+  - Replace naive pagination with scroll or layout-aware paging; later consider position anchors.
+  - Wire FRB to Rust `build_manifest()` for stable chapters/paragraph IDs and progress sync.
+- **Effort**: 10–16 hours for Flutter reader polish; +8–12 hours to bridge Rust parser and migrate.
 
 ### 🔶 **MEDIUM PRIORITY** - Audio Features
 

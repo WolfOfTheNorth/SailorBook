@@ -119,6 +119,15 @@ A privacy‑first reading and listening app for public‑domain books. The app d
 * **FR‑SET‑2:** Storage management (clear cache per book / all).
 * **FR‑SET‑3:** About/Attribution & Public‑Domain guidance; jurisdiction note.
 
+### 6.6 Reader (EPUB ToC & Rendering)
+
+* **FR‑READ‑1:** Load chapters from EPUB ToC (`nav.xhtml`) and spine order; preserve hierarchy where possible.
+* **FR‑READ‑2:** Provide chapter navigation (dropdown + next/prev chapter).
+* **FR‑READ‑3:** Render HTML semantics and preserve line breaks; show images when feasible.
+* **FR‑READ‑4:** Remove IA boilerplate (disclaimer, accuracy lines, "Page N" markers) without stripping real content.
+* **FR‑READ‑5:** Persist last read position per book and restore on open.
+* **FR‑READ‑6:** Scroll mode for MVP; layout‑aware pagination optional later.
+
 ---
 
 ## 7) Non‑Functional Requirements (NFRs)
@@ -145,7 +154,10 @@ A privacy‑first reading and listening app for public‑domain books. The app d
 * Audio playback: **`just_audio`**, **`audio_session`** (background audio later via `audio_service`)
 * Storage/paths: **`path_provider`**, **`shared_preferences`** (or a small JSON store), optional `isar`/`drift` later
 * HTTP/OPDS: **`http`**, optional `dio`
-* EPUB parsing (Dart side for light metadata only): `epubx` (Rust will do the robust extraction)
+* EPUB parsing/rendering:
+  * Metadata/light parsing: `epubx`
+  * Rendering & navigation (short‑term): `flutter_html` or `epub_view` (provides ToC, positions, progress)
+  * Robust extraction (long‑term): Rust `build_manifest()` via FRB
 * Theming/Fonts: **Material 3** + Google Fonts (`inter`, `lora`)
 
 ### 8.3 Core Engine (Reusable)
@@ -237,6 +249,15 @@ A privacy‑first reading and listening app for public‑domain books. The app d
 * **AC2:** Jump back 10s within paragraph (seek within current audio).
 * **AC3:** Speed control 0.8×–2.5× affects playback without pitch artifacts (acceptable quality).
 * **AC4:** On app relaunch, playback resumes at last position.
+
+### Story S6 — Reader Navigation & Rendering
+
+**As a** reader **I want** accurate chapters and readable content **so that** I can follow the book easily.
+
+* **AC1:** Chapter list reflects the book’s ToC order; navigating chapters works.
+* **AC2:** Content renders with headings/italics/lists; line breaks preserved; images shown or gracefully omitted.
+* **AC3:** IA boilerplate not visible in reader.
+* **AC4:** Reopening returns to last read position in the chapter.
 
 ### Story S5 — Settings & Storage
 
