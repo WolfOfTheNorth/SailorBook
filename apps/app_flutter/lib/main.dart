@@ -9,6 +9,7 @@ import 'themes/app_theme.dart';
 import 'views/home/library_view.dart';
 import 'views/book/book_details_view.dart';
 import 'views/player/player_view.dart';
+import 'views/reader/reader_view.dart';
 import 'views/settings/settings_view.dart';
 import 'utils/test_helpers.dart';
 import 'generated/native.dart' as native;
@@ -81,6 +82,12 @@ final _router = GoRouter(
     GoRoute(
       path: '/player/:bookId',
       builder: (context, state) => PlayerView(
+        bookId: state.pathParameters['bookId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/reader/:bookId',
+      builder: (context, state) => ReaderView(
         bookId: state.pathParameters['bookId']!,
       ),
     ),

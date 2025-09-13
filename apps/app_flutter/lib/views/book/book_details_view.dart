@@ -88,9 +88,7 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
       ),
       body: book == null
           ? const Center(child: Text('Book not found')).withTestId('book-not-found', label: 'Book Not Found')
-          : _isLoadingManifest
-              ? const Center(child: CircularProgressIndicator()).withTestId('manifest-loading', label: 'Loading Book Details')
-              : _buildBookDetails(book),
+          : _buildBookDetails(book),
     );
   }
 
@@ -354,6 +352,7 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
     final libraryState = ref.watch(libraryControllerProvider);
     final isDownloadingThis = libraryState.downloadProgress.containsKey(book.id);
     final downloadProgress = libraryState.downloadProgress[book.id] ?? 0.0;
+    final isLocallyAvailable = book.isDownloaded;
 
     if (!book.isDownloaded) {
       if (_isDownloading || isDownloadingThis) {
@@ -399,7 +398,7 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: _manifest != null ? _startListening : null,
+            onPressed: isLocallyAvailable ? _startListening : null,
             icon: const Icon(Icons.play_arrow),
             label: const Text('Listen'),
           ),
@@ -407,7 +406,7 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
         SizedBox(width: 12.w),
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: _manifest != null ? _startReading : null,
+            onPressed: isLocallyAvailable ? _startReading : null,
             icon: const Icon(Icons.chrome_reader_mode),
             label: const Text('Read'),
           ),
@@ -547,12 +546,7 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
   }
 
   void _startReading() {
-    // TODO: Navigate to reading mode
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Reading mode coming in v0.1'),
-      ),
-    );
+    context.push('/reader/${widget.bookId}');
   }
 
   void _playChapter(Chapter chapter) {

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:js' as js;
+
+// Conditional imports for platform-specific functionality
+import 'test_helpers_stub.dart' as js if (dart.library.js) 'dart:js';
 
 /// Utility class for adding test identifiers to Flutter widgets for E2E testing
 class TestHelpers {
