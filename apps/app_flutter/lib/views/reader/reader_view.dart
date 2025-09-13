@@ -20,6 +20,8 @@ class _ReaderViewState extends ConsumerState<ReaderView> {
   String? _error;
   List<_ChapterData> _chapters = const [];
   int _currentChapter = 0;
+  int _currentPage = 0;
+  List<String> _currentPages = const [];
 
   @override
   void initState() {
@@ -75,7 +77,8 @@ class _ReaderViewState extends ConsumerState<ReaderView> {
             ? chapter.Title!.trim()
             : 'Untitled Chapter';
         final html = chapter.HtmlContent ?? '';
-        final text = _stripHtml(html);
+        final cleanedHtml = _removeInternetArchiveArtifactsHtml(html);
+        final text = _stripHtmlPreserveLines(cleanedHtml);
         chapters.add(_ChapterData(title: title, text: text));
         if (chapter.SubChapters != null) {
           for (final sub in chapter.SubChapters!) {
@@ -88,21 +91,41 @@ class _ReaderViewState extends ConsumerState<ReaderView> {
         collect(ch);
       }
 
+      // If the EPUB didn't provide a ToC, try to build a sensible fallback
+      if (chapters.isEmpty) {
+        final contentFiles = (epubBook.Content?.Html?.values.toList()) ?? const [];
+        final fallbackChapters = <_ChapterData>[];
+        int sectionIndex = 1;
+        for (final f in contentFiles) {
+          final html = f.Content ?? '';
+          if (html.trim().isEmpty) continue;
+          final titleFromHeading = _firstHeadingFromHtml(html);
+          final text = _stripHtmlPreserveLines(_removeInternetArchiveArtifactsHtml(html));
+          if (text.isEmpty) continue;
+          fallbackChapters.add(_ChapterData(
+            title: titleFromHeading ?? 'Section $sectionIndex',
+            text: text,
+          ));
+          sectionIndex++;
+        }
+        if (fallbackChapters.isNotEmpty) {
+          chapters.addAll(fallbackChapters);
+        } else {
+          // Ultimate fallback: single large chapter
+          chapters.add(_ChapterData(
+            title: 'Book',
+            text: _stripHtmlPreserveLines(_removeInternetArchiveArtifactsHtml(
+                (epubBook.Content?.Html?.values.map((d) => d.Content).join('\n')) ?? '')),
+          ));
+        }
+      }
+
       setState(() {
-        _chapters = chapters.isNotEmpty
-            ? chapters
-            : [
-                _ChapterData(
-                  title: 'Book',
-                  text: _stripHtml((epubBook.Content?.Html?.values
-                              .map((d) => d.Content)
-                              .join('\n')) ??
-                          ''),
-                ),
-              ];
+        _chapters = chapters;
         _currentChapter = 0;
         _loading = false;
       });
+      _resetPagination();
     } catch (e) {
       setState(() {
         _error = 'Failed to open EPUB: $e';
@@ -123,7 +146,12 @@ class _ReaderViewState extends ConsumerState<ReaderView> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
                       value: _currentChapter,
-                      onChanged: (i) => setState(() => _currentChapter = i ?? 0),
+                      onChanged: (i) {
+                        setState(() {
+                          _currentChapter = i ?? 0;
+                        });
+                        _resetPagination();
+                      },
                       items: List.generate(_chapters.length, (i) {
                         final label = _chapters[i].title;
                         return DropdownMenuItem<int>(
@@ -137,6 +165,29 @@ class _ReaderViewState extends ConsumerState<ReaderView> {
                     ),
                   ),
                 ),
+                if (_currentPages.isNotEmpty) ...[
+                  IconButton(
+                    tooltip: 'Previous page',
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: _currentPage > 0
+                        ? () => setState(() => _currentPage -= 1)
+                        : null,
+                  ),
+                  Center(
+                    child: Text(
+                      'Page ${_currentPage + 1}/${_currentPages.length}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Next page',
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: (_currentPage + 1) < _currentPages.length
+                        ? () => setState(() => _currentPage += 1)
+                        : null,
+                  ),
+                  SizedBox(width: 8.w),
+                ],
               ]
             : null,
       ),
@@ -170,14 +221,29 @@ class _ReaderViewState extends ConsumerState<ReaderView> {
     }
 
     final chapter = _chapters[_currentChapter];
+    final pageText = _currentPages.isNotEmpty
+        ? _currentPages[_currentPage]
+        : chapter.text;
+    final hasText = pageText.trim().isNotEmpty;
     return Scrollbar(
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-        child: SelectableText(
-          chapter.text,
-          textAlign: TextAlign.left,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
-        ),
+        child: hasText
+            ? SelectableText(
+                pageText,
+                textAlign: TextAlign.left,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
+              )
+            : Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.menu_book_outlined, size: 48.w),
+                    SizedBox(height: 12.h),
+                    const Text('No content to display for this section.'),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -194,6 +260,107 @@ class _ReaderViewState extends ConsumerState<ReaderView> {
         .replaceAll('&gt;', '>')
         .replaceAll('&quot;', '"')
         .replaceAll('&#39;', "'");
+  }
+
+  static String _stripHtmlPreserveLines(String html) {
+    if (html.isEmpty) return '';
+    var s = html;
+    // Convert common block-level boundaries to newlines (case-insensitive)
+    s = s.replaceAll(
+      RegExp(r'</?(br|p|div|li|tr|td|blockquote|h[1-6])[^>]*>', caseSensitive: false),
+      '\n',
+    );
+    // Remove remaining tags
+    s = s.replaceAll(RegExp(r'<[^>]+>'), ' ');
+    // Decode a few common entities
+    s = s
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'");
+    // Normalize spaces but keep newlines
+    s = s.replaceAll(RegExp(r'[ \t\f\v]+'), ' ');
+    // Collapse many blank lines
+    s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return s.trim();
+  }
+
+  static String? _firstHeadingFromHtml(String html) {
+    // Use [\s\S] instead of dotAll for broad web compatibility
+    final match = RegExp(r'<h[1-3][^>]*>([\s\S]*?)</h[1-3]>', caseSensitive: false).firstMatch(html);
+    if (match == null) return null;
+    final raw = match.group(1) ?? '';
+    final text = raw.replaceAll(RegExp(r'<[^>]+>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    return text.isNotEmpty ? text : null;
+  }
+
+  static String _removeInternetArchiveArtifactsHtml(String html) {
+    if (html.isEmpty) return html;
+    var s = html;
+    // Remove IA preface paragraph(s) containing these phrases (case-insensitive)
+    final phrases = [
+      'This book was produced in EPUB format by the Internet Archive',
+      'Created with hocr-to-epub',
+      'Digitized by the Internet Archive',
+      'The text on this page is estimated to be only',
+    ];
+    for (final p in phrases) {
+      final escaped = RegExp.escape(p);
+      // Remove simple blocks that contain the phrase (non-greedy, shallow)
+      final tagPattern = RegExp('<[^>]*>[^<]*$escaped[^<]*</[^>]*>', caseSensitive: false);
+      s = s.replaceAll(tagPattern, '');
+      // Also remove any remaining plain-text occurrences
+      s = s.replaceAll(RegExp(escaped, caseSensitive: false), '');
+    }
+    // Remove standalone page markers like "Page 12" even if not wrapped in tags
+    s = s.replaceAll(
+      RegExp(r'^\s*Page\s+\d+\s*$', multiLine: true, caseSensitive: false),
+      '',
+    );
+    // Safety: if cleanup removes everything, fall back to original html
+    if (s.trim().isEmpty) return html;
+    return s;
+  }
+
+  void _resetPagination() {
+    if (_chapters.isEmpty) {
+      setState(() {
+        _currentPages = const [];
+        _currentPage = 0;
+      });
+      return;
+    }
+    final text = _chapters[_currentChapter].text;
+    final pages = _splitIntoPages(text, maxChars: 1800);
+    setState(() {
+      _currentPages = pages;
+      _currentPage = 0;
+    });
+  }
+
+  static List<String> _splitIntoPages(String text, {int maxChars = 1800}) {
+    if (text.isEmpty) return [''];
+    if (text.length <= maxChars) return [text];
+    final words = text.split(RegExp(r'\s+'));
+    final pages = <String>[];
+    var buffer = StringBuffer();
+    var currentLen = 0;
+    for (final w in words) {
+      final addLen = currentLen == 0 ? w.length : 1 + w.length; // include space when not first
+      if (currentLen + addLen > maxChars) {
+        pages.add(buffer.toString().trim());
+        buffer = StringBuffer();
+        currentLen = 0;
+      }
+      if (currentLen > 0) buffer.write(' ');
+      buffer.write(w);
+      currentLen += addLen;
+    }
+    final last = buffer.toString().trim();
+    if (last.isNotEmpty || pages.isEmpty) pages.add(last);
+    return pages;
   }
 }
 
