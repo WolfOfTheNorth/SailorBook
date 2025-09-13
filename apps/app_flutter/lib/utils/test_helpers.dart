@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:html' as html show document;
 import 'dart:js' as js;
 
 /// Utility class for adding test identifiers to Flutter widgets for E2E testing

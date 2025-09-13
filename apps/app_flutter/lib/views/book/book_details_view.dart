@@ -499,7 +499,7 @@ class _BookDetailsViewState extends ConsumerState<BookDetailsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Download failed'),
+            content: const Text('❌ Download failed'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(

@@ -272,7 +272,7 @@ class BookService {
       'https://archive.org/download/$iaId/${iaId}_djvu.epub',
       'https://archive.org/download/$iaId/${iaId}_text.epub', 
       'https://archive.org/download/$iaId/book.epub',
-      'https://archive.org/download/$iaId/${iaId}.pdf.epub',
+      'https://archive.org/download/$iaId/$iaId.pdf.epub',
     ];
     
     for (final url in alternativeUrls) {

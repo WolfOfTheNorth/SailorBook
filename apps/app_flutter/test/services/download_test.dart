@@ -15,7 +15,7 @@ void main() {
 
     test('should download a real EPUB file with progress tracking', () async {
       // Create a test book based on a real Internet Archive book
-      final testBook = Book(
+      const testBook = Book(
         id: 'aliceadventures00carr',
         title: 'Alice\'s Adventures in Wonderland',
         author: 'Lewis Carroll',
@@ -74,7 +74,7 @@ void main() {
     }, timeout: const Timeout(Duration(minutes: 2)));
 
     test('should handle download failure gracefully', () async {
-      final invalidBook = Book(
+      const invalidBook = Book(
         id: 'nonexistent',
         title: 'Non-existent Book',
         author: 'No Author',
@@ -104,7 +104,7 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     test('should create proper directory structure', () async {
-      final testBook = Book(
+      const testBook = Book(
         id: 'test-book-123',
         title: 'Test Book',
         author: 'Test Author',

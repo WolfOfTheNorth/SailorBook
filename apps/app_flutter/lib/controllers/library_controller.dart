@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/book.dart';
 import '../services/book_service.dart';
-import '../services/web_storage_service.dart';
 import '../generated/native.dart' as native;
 
 final bookServiceProvider = Provider<BookService>((ref) => BookService());

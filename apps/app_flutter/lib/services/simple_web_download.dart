@@ -48,7 +48,7 @@ class SimpleWebDownload {
         .trim();
     
     // Limit length to avoid filesystem issues
-    final maxLength = 180;
+    const maxLength = 180;
     final combined = '$cleanTitle - $cleanAuthor';
     final base = combined.length > maxLength 
         ? combined.substring(0, maxLength).trim()

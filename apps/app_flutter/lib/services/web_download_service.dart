@@ -154,7 +154,7 @@ class WebDownloadService {
           if (onProgress != null) {
             // Simulate download progress since we can't track browser downloads
             for (double progress = 0.3; progress <= 1.0; progress += 0.1) {
-              await Future.delayed(Duration(milliseconds: 200));
+              await Future.delayed(const Duration(milliseconds: 200));
               onProgress(progress);
             }
           }
@@ -261,7 +261,7 @@ class WebDownloadService {
         .trim();
     
     // Limit length and add extension
-    final maxLength = 200;
+    const maxLength = 200;
     final base = sanitized.length > maxLength 
         ? sanitized.substring(0, maxLength)
         : sanitized;
